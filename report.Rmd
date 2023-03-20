@@ -1,0 +1,755 @@
+---
+title: "Analysis of spike trains of neurons from sensory information across the mouse brain"
+author: "Wenzhuo Wu"
+date: "March 18"
+output:
+  html_document:
+    df_print: paged
+    number_sections: yes
+  
+    
+  pdf_document: default
+  word_document: default
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H')
+```
+
+
+# Abstract 
+
+It is unknow how neurons across the brain mediate perceptual decision execute actions based on visual stimuli of varying contrast on the left side, right side, both sides or neither side. A experiemnt conducted by Steinmetz et al. (2019) investigated how sensory information is encoded and processed in the brain during decision-making. Ten mice were used in the experiment, and their neural activity in the visual cortex was recorded as spike trains. In this project, the objectives was to 1) investigate how neurons in the visual cortex respond to visual stimuli presented on the left and right sides and 2) compare the performance of predictive models to predict outcome of each trial using the neural activities and stimuli. Results show there is strong evidence supporting a significant interaction effect between the two predictors on the mean firing rate. This indicates that `contrast_left` and `contrast_right` work together to influence the `mean firing rate`. In comparison to logistic regression and support vector machines, random forest classifier has the best unbiased and accurate prediction of success and failure of response.
+
+*** 
+# Introduction
+
+Perceptural decisions involve processing sensory information, selecting possible actions and implementing them (Ciesk and Kalaska, 2010). It is unknow how to neurons that mediate these processes are distributed across the brain, or whether they are mediated by circuits. A experiemnt conducted by Steinmetz et al. (2019) investigated how sensory information is encoded and processed in the brain during decision-making. Ten mice were used in the experiment, and their neural activity in the visual cortex was recorded as spike trains. The mice were asked to make decisions based on visual stimuli displayed on two screens with varied contrast levels. The objective of this study is to 1) investigate how neurons in the visual cortex respond to visual stimuli presented on the left and right sides and 2) compare the performance of predictive models to predict outcome of each trial using the neural activities and stimuli. The outcome of this research could provide insights into how neurons across the brain mediate perceptual decision execute actions (Hernández et al. 2010) based on visual stimuli of varying contrast on the left side, right side, both sides or neither side.
+
+</span>
+
+
+***  
+# Background 
+
+In order to better understand how sensory data is encoded and processed in the brain during decision-making, Steinmetz et al. (2019) carried out a study. Ten mice were used in the experiment, and their neural activity in the visual cortex was recorded as spike trains. The mice were asked to make decisions based on visual stimuli displayed on two screens with varied contrast levels. This project focuses on analyzing the spike trains of neurons in the visual cortex, specifically from the onset of stimuli to 0.4 seconds post-onset. The analysis is based on data from five sessions (Sessions 1 to 5) of two mice (Cori and Frossman). Five variables are available for each trial, which includes `feedback_type` (type of the feedback, 1 for success and -1 for failure), `contrast_left` (contrast of the left stimulus), `contrast_right`(contrast of the right stimulus),`time` (centers of the time bins for `spks`) and `spks` (numbers of spikes of neurons in the visual cortex in time bins defined in `time`).
+
+
+*** 
+
+
+```{r, echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+session=list()
+for(i in 1:5){
+  session[[i]]=readRDS(paste('session',i,'.rds',sep=''))
+  print(session[[i]]$mouse_name)
+  print(session[[i]]$date_exp)
+  
+}
+
+ID=1
+t=0.39 # from Background 
+
+n.trials=length(session[[ID]]$spks)
+n.neurons=dim(session[[ID]]$spks[[1]])[1]
+
+# Obtain the firing rate 
+firingrate1_mean=numeric(n.trials)
+firingrate1_max=numeric(n.trials)
+for(i in 1:n.trials){
+  firingrate1_mean[i]=sum(session[[ID]]$spks[[i]])/n.neurons/t
+  firingrate1_max[i]=max(session[[ID]]$spks[[i]])/t
+}
+
+
+ID=2 
+n.trials=length(session[[ID]]$spks)
+n.neurons=dim(session[[ID]]$spks[[1]])[1]
+
+# Obtain the firing rate 
+firingrate2_mean=numeric(n.trials)
+firingrate2_max=numeric(n.trials)
+for(i in 1:n.trials){
+  firingrate2_mean[i]=sum(session[[ID]]$spks[[i]])/n.neurons/t
+  firingrate2_max[i]=max(session[[ID]]$spks[[i]])/t
+}
+
+
+ID=3 
+n.trials=length(session[[ID]]$spks)
+n.neurons=dim(session[[ID]]$spks[[1]])[1]
+
+# Obtain the firing rate 
+firingrate3_mean=numeric(n.trials)
+firingrate3_max=numeric(n.trials)
+for(i in 1:n.trials){
+  firingrate3_mean[i]=sum(session[[ID]]$spks[[i]])/n.neurons/t
+  firingrate3_max[i]=max(session[[ID]]$spks[[i]])/t
+}
+
+
+ID=4 
+n.trials=length(session[[ID]]$spks)
+n.neurons=dim(session[[ID]]$spks[[1]])[1]
+
+# Obtain the firing rate 
+firingrate4_mean=numeric(n.trials)
+firingrate4_max=numeric(n.trials)
+for(i in 1:n.trials){
+  firingrate4_mean[i]=sum(session[[ID]]$spks[[i]])/n.neurons/t
+  firingrate4_max[i]=max(session[[ID]]$spks[[i]])/t
+}
+
+
+ID=5 
+n.trials=length(session[[ID]]$spks)
+n.neurons=dim(session[[ID]]$spks[[1]])[1]
+
+# Obtain the firing rate 
+firingrate5_mean=numeric(n.trials)
+firingrate5_max=numeric(n.trials)
+for(i in 1:n.trials){
+  firingrate5_mean[i]=sum(session[[ID]]$spks[[i]])/n.neurons/t
+  firingrate5_max[i]=max(session[[ID]]$spks[[i]])/t
+}
+
+
+
+data1 <- data.frame(contrast_left = session[[1]]$contrast_left, contrast_right = session[[1]]$contrast_right, mean_firing_rate =firingrate1_mean, max_firing_rate =firingrate1_max, session = 'session_1', mouse_name = "Cori", date_exp = '2016-12-14', feedback_type = session[[1]]$feedback_type)
+
+data2 <- data.frame(contrast_left = session[[2]]$contrast_left, contrast_right = session[[2]]$contrast_right, mean_firing_rate =firingrate2_mean, max_firing_rate =firingrate2_max, session = 'session_2', mouse_name = "Cori", date_exp = '2016-12-17', feedback_type = session[[2]]$feedback_type)
+
+data3 <- data.frame(contrast_left = session[[3]]$contrast_left, contrast_right = session[[3]]$contrast_right, mean_firing_rate =firingrate3_mean, max_firing_rate =firingrate3_max, session = 'session_3', mouse_name = "Cori", date_exp = '2016-12-18', feedback_type = session[[3]]$feedback_type)
+
+data4 <- data.frame(contrast_left = session[[4]]$contrast_left, contrast_right = session[[4]]$contrast_right, mean_firing_rate =firingrate4_mean, max_firing_rate =firingrate4_max, session = 'session_4', mouse_name = "Forssmann", date_exp = '2017-11-01', feedback_type = session[[4]]$feedback_type)
+
+data5 <- data.frame(contrast_left = session[[5]]$contrast_left, contrast_right = session[[5]]$contrast_right, mean_firing_rate =firingrate5_mean, max_firing_rate =firingrate5_max, session = 'session_5', mouse_name = "Forssmann", date_exp = '2017-11-02', feedback_type = session[[5]]$feedback_type)
+
+df <- rbind(data1,data2,data3,data4, data5)
+df$contrast_left <- as.factor(df$contrast_left)
+df$contrast_right<- as.factor(df$contrast_right)
+df$feedback_type <- as.factor(df$feedback_type)
+```
+
+
+# Descriptive analysis 
+
+## Preprocessing
+
+Steinmetz et al. (2019) chose mean firing rate as the target variable due to its widespread use as a measure of neuronal activity in neuroscience. Mean firing rate is determined by calculating the average number of action potentials, or spikes, generated by a neuron per unit of time, and is often used as a proxy for the overall level of activity of the neuron. This metric is useful for analyzing how different brain regions respond to stimuli or are involved in specific behaviors. Additionally, maximum firing rate was considered as an alternative response variable since it captures the peak level of activity that the neuron reached during the experimental session. It was determined by calculating the maximum value of spikes within a certain time period. In the dataset, eight variables were included and their missing percentage is 0 (**Table 1**).
+ 
+```{r, echo=FALSE, warning=FALSE,  message=FALSE, tab.align = "center"}
+tab <- data.frame( Description = c("contrast of the left stimulus","contrast of the right stimulus","average number of spikes per second across all neurons within 0.4 seconds time interval","maximum number of spikes per second across all neurons within 0.4 seconds time interval","Experiment session","Name of the mouse for experiment","Date of the experiment","type of the feedback, 1 for success and -1 for failure"),Missing_Percentage = colMeans(is.na(df)))
+library(kableExtra)
+tab %>%
+  kbl(caption = "") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+# DT::datatable(tab)
+```
+<p style="text-align: center;">**Table 1**: Missing percentage for each variable.</p>
+
+## Exploratory data analysis
+
+Distribution of maximum firing rate across five sessions was shown in **Figure 1**, presented using a boxplot. However, the plot only revealed seven different unique results, suggesting that mean firing rate may be a more appropriate metric to use than maximum firing rate. Therefore, this analysis focused on exploring the mean firing rate in the dataset.
+
+
+```{r, echo=FALSE, result = 'hide', fig.height = 3, fig.width = 5, fig.align = "center"}
+library(ggplot2)
+library(ggplot2)
+ch <- ggplot(df,aes(x=session,y=max_firing_rate,fill=session))+
+      geom_boxplot( alpha=0.3)+ theme(legend.position="none")+
+        labs(x="Session ID", y='Max firing rate')
+
+ch 
+```
+<p style="text-align: center;">**Figure 1**. Boxplot for max firing rate across different session.</p>
+
+Distribution of mean firing rate across various sessions using a boxplot is displayed in **Figure 2**. Summary statistics for the mean firing rate are presented in **Table 2**. The results show that the mean and standard deviation of mean firing rate were highest in session one, while the mean in session five was the lowest and the standard deviation in session two was the lowest. Visual observation of the boxplot suggests that mouse `Cori` (session 1,2 and 3) has a greater mean firing rate than `Forssmann`(session 4 and 5). The distributions of mean firing rate across sessions have a lot differences, indicating the need to account for the influence of sessions when analyzing the data. Thus, it is necessary to analyze the data with effect of session to remove the influence of session on mean firing rate. 
+
+```{r, echo=FALSE, result = 'hide', fig.height = 3, fig.width = 5, fig.align = "center"}
+library(ggplot2)
+ch <- ggplot(df,aes(x=session,y=mean_firing_rate,fill=session))+
+      geom_boxplot( alpha=0.3)+ theme(legend.position="none")+
+        labs(x="Session ID", y='Mean firing rate')
+
+ch 
+```
+<p style="text-align: center;">**Figure 2**. Boxplot for mean firing rate across different session.</p>
+
+
+```{r, echo=FALSE, result = 'hide', fig.height = 4, fig.width = 6, tab.align = "center"}
+#aggregate(mean_firing_rate~session,data=df,mean)
+#aggregate(mean_firing_rate~session,data=df,sd)
+#sum(df$session=='session_1')
+#sum(df$session=='session_2')
+#sum(df$session=='session_3')
+#sum(df$session=='session_4')
+#sum(df$session=='session_5')
+
+df2 <- data.frame (Session  = c("1", "2","3","4","5"),
+                  Count = c("214", "251", "228","249","254"),
+                  Mean= c("4.24","3.41","3.68","2.16","1.41"),
+                  Sd= c("0.92","0.49","0.76","0.57","0.61"),
+                  Mouse_name=c("Cori","Cori","Cori","Forssmann","Forssmann"),
+                   Date =c("2016-12-14","2016-12-17","2016-12-18","2017-11-01","2017-11-02")
+                  )
+
+
+df2 %>%
+  kbl(caption = "") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+<p style="text-align: center;">**Table 2**. Summary statistics for mean firing rate from different sessions.</p>
+
+**Figure 3** displays the distribution of mean firing rate across different combinations of right contrast and left contrast for sessions, indicating that the mean firing rate may vary with different levels of contrast_left and contrast_left. Visual observation suggests that there is significant difference in mean firing rate among the different combinations of left and right contrast within each session due to non-parallel lines. However, it is notable that the mean firing rate tends to be higher when there is a greater difference between left and right contrast levels. To further confirm this observation, **Figure 4** was created, which displays the distribution of mean firing rate across absolute differences between left and right contrast. The results show that `Cori` has a greater mean firing rate when there is a greater difference between left and right contrast levels, while `Forssmann` exhibits a more stable mean firing rate. This suggests that `Cori` is probably more sensitive to visual stimuli than `Forssmann`.
+
+
+```{r,echo=FALSE, result = 'hide',warning=FALSE, fig.height = 4, fig.width = 7, fig.align = "center"}
+ch <- ggplot(df,aes(x=contrast_right,y=mean_firing_rate,group=contrast_left,col=contrast_left))+
+      
+  theme(legend.position="top")+
+  stat_summary(fun=mean,geom="line")+stat_summary(fun=sd,geom="errorbar")+ylim(1,5)+
+        labs(x="contrast_right", y='Mean firing rate')+facet_wrap(~ session, nrow = 1) 
+
+ch
+```
+<p style="text-align: center;">**Figure 3**. Plots of mean firing rate across sessions for different left contrast and right contrast levels.</p>
+
+```{r,echo=FALSE, result = 'hide', fig.height = 3, fig.width = 7, fig.align = "center"}
+# Create a dictionary mapping each category to its corresponding numeric value
+my_dict <- c("0"=0, "0.25"=0.25, "0.5"=0.5, "1"=1)
+
+contrast_right_1 <- sapply(df$contrast_right, function(x) my_dict[x])
+contrast_left_1 <- sapply(df$contrast_left, function(x) my_dict[x])
+df$difference <- abs(contrast_right_1-contrast_left_1)
+df$difference <- as.factor(df$difference)
+ch <- ggplot(df,aes(x=difference,y=mean_firing_rate,fill=difference))+
+      geom_boxplot( alpha=0.3)+ theme(legend.position="none")+facet_wrap(~ session, nrow = 1) +
+        labs(x="Absolute difference between left and right contrast", y='Mean firing rate')
+
+ch 
+```
+<p style="text-align: center;">**Figure 4**. Boxplot of mean firing rate across absolute differences between left and right contrast.</p>
+
+*** 
+
+
+# Inferential analysis 
+
+The main task of this section is to investigate how neurons in the visual cortex respond to visual stimuli presented on the left and right sides (**objective 1**). Specifically, the null hypothesis that the two factors do not interact in a two-way mixed model was tested.
+
+During the experiment, mice performed a task where visual stimuli of varying contrast appeared on the left, right, both, or neither side. The mice received a water reward for indicating which side had the highest contrast while neural activity was recorded across the brain.
+
+To achieve this goal, a **split-plot design** was used, where the fixed effects were contrast_left and contrast_right, and the random factor was sessions. The purpose of this design was to control for potential sources of variability of session that are not relevant to the study, thus increasing the accuracy of the observed treatment differences. The random factor also helped to reduce error variance among sessions and increase the study's statistical power.
+
+## Model
+
+In order to investigate first objective, full model and reduced model were used.
+
+**Full model**
+$$Y_{ijkl} = \mu + \alpha_{i} + \beta_{j} + \gamma_{k} + (\alpha\beta)_{ij}+ \epsilon_{ijkl}$$
+
+where $\gamma_{k}$ are i.i.d. $N(0, \sigma_{\gamma}^2)$, $\epsilon_{ij}$ are i.i.d. $N(0, \sigma^2)$ ,
+with the constraint $\sum_{i}\alpha_{i} = \sum_{j} \beta_{j} = 0$, and $\sum_{i=1}^a(\alpha\beta)_{ij} = \sum_{j=1}^b(\alpha\beta)_{ij} = 0, \forall i,j$
+
+By notation,
+
+* The index $i$ denotes factor level for `contrast_left`: 0, 0.25, 0.5 and 1. The index $j$ denotes factor level for `contrast_right`: 0, 0.25, 0.5 and 1. The index $k$ denotes level for `session`: 1, 2, 3, 4 and 5. The index $l$ denotes $l^{th}$ observation in each session.
+
+* $Y_{ijkl}$ is the random variable representing the mean firing rate from $i^{th}$  level `contrast_left` and $j^{th}$  level `contrast_right` obseved $l^{th}$ observation in `session` k. 
+* $\mu$ is a constant representing the overall mean.
+* $\alpha_{i}$ is the additive effect of the $i^{th}$ treatment (i=1,2,3,4).
+* $\beta_{j}$ is the additive effect of the $j^{th}$ treatment (j=1,2,3,4).
+* $\gamma_{k}$ is the additive effect of the $k^{th}$ random intercept (k=1,2,3,4,5).
+* $(\alpha\beta)_{ij}$ is the interaction effect of the $i^{th}$ treatment (i=1,2,3,4) and $j^{th}$ treatment (j=1,2,3,4).
+* $\epsilon_{ijkl}$ is the random error of $l^{th}$ observation for the $i^{th}$ treatment (i=1,2,3,4) and $j^{th}$ treatment (j=1,2,3,4) in the $k^{th}$ session.
+
+**Reduced model**
+$$Y_{ijkl} = \mu + \alpha_{i} + \beta_{j} + \gamma_{k} + \epsilon_{ijkl}$$
+
+where $\gamma_{k}$ are i.i.d. $N(0, \sigma_{\gamma}^2)$, $\epsilon_{ij}$ are i.i.d. $N(0, \sigma^2)$ ,
+with the constraint $\sum_{i}\alpha_{i} = \sum_{j} \beta_{j} = 0$.
+
+By notation,
+
+* The index $i$ denotes factor level for `contrast_left`: 0, 0.25, 0.5 and 1. The index $j$ denotes factor level for `contrast_right`: 0, 0.25, 0.5 and 1. The index $k$ denotes level for `session`: 1, 2, 3, 4 and 5. The index $l$ denotes $l^{th}$ observation in each session.
+
+* $Y_{ijkl}$ is the random variable representing the mean firing rate from $i^{th}$  level `contrast_left` and $j^{th}$  level `contrast_right` obseved $l^{th}$ observation in `session` k. 
+* $\mu$ is a constant representing the overall mean.
+* $\alpha_{i}$ is the additive effect of the $i^{th}$ treatment (i=1,2,3,4).
+* $\beta_{j}$ is the additive effect of the $j^{th}$ treatment (j=1,2,3,4).
+* $\gamma_{k}$ is the additive effect of the $k^{th}$ random intercept (k=1,2,3,4,5).
+* $\epsilon_{ijkl}$ is the random error of $l^{th}$ observation for the $i^{th}$ treatment (i=1,2,3,4) and $j^{th}$ treatment (j=1,2,3,4) in the $k^{th}$ session.
+
+**Assumption**
+
+The random erros in both models are assumed to be identically and independently distributed from a normal distribution with mean 0 and variance $\sigma^2$.
+
+
+**Fit the model**
+
+The fitted model of full model is $\hat{Y_{ijkl}}$ = 2.71 + $\hat{\alpha_i}$ + $\hat\beta_j$ + $\hat{(\alpha\beta)}_{ij}$ (estimates can be found in**Table 3**). `Contrast_left0`  and `Contrast_right0` was considered as the reference gorup. Variation among `Session` contributes to about 76% of the total variance (**Table 4**).
+
+```{r, echo=FALSE, warning=FALSE,  message=FALSE, tab.align = "center"}
+
+library(lmerTest)
+fit <- lmer(mean_firing_rate ~ contrast_left * contrast_right + (1|session),data=df)
+tab_1 <- summary(fit)
+```
+
+```{r, echo=FALSE, warning=FALSE,  message=FALSE, tab.align = "center"}
+df2 <- data.frame(Parameter  = c("Intercept", "Contrast_left0.25","Contrast_left0.5","Contrast_left1",
+                                  "Contrast_right0.25","Contrast_right0.5", "Contrast_right1","contrast_left0.25:contrast_right0.25","contrast_left0.5:contrast_right0.25",
+                                 "contrast_left1:contrast_right0.25","contrast_left0.25:contrast_right0.5","contrast_left0.5:contrast_right0.5",
+                                 "contrast_left1:contrast_right0.5","contrast_left0.25:contrast_right1","contrast_left0.5:contrast_right1","contrast_left1:contrast_right1"),
+                  Estimate = c("2.71", "0.13",
+                  "0.34","0.43","0.34","0.32","0.49","-0.29","-0.34","-0.43","-0.23","-0.29","-0.35","-0.32","-0.12","-0.20"),
+                  
+                  Sd= c("0.51","0.12","0.08","0.08","0.10","0.08","0.07","0.19","0.16","0.14","0.17","0.16","0.15","0.15","0.15","0.15"),
+                  t_value=c("5.24","1.06","4.22","5.26","3.42","4.00","7.21","-1.53","-2.10","-3.00","-1.33","-1.83","-2.30","-2.12","-0.81","-1.30"),
+                   P_value =c("0.01","0.29","0.00","0.00","0.00","0.00","0.00","0.13","0.04","0.00","0.18","0.07","0.02","0.03","0.42","0.19"))
+
+
+df2 %>%
+  kbl(caption = "") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+```
+<p style="text-align: center;">**Table 3**. Parameter estimate of full model.</p>
+
+
+
+|     Groups  |  Name   | Variance |Std.Dev|
+| ------------------|:-----------:|:----------------------:| :-----:|
+| `session`     |  (Intercept)| 1.3325  | 1.1544|
+|    `Residuals`      | |  0.4203 |0.6483|
+<p style="text-align: center;">**Table 4**. Variance for random effects of full model.</p>
+
+The fitted model of reduced model is $\hat{Y_{ijkl}}$ = 2.77 + $\hat{\alpha_i}$ + $\hat\beta_j$ (estimates can be found in **Table 5**). `Contrast_left0`  and `Contrast_right0` was considered as the reference gorup. Variation among `Session` contributes to about 76% of the total variance (**Table 6**).
+
+
+```{r, echo=FALSE, warning=FALSE,  message=FALSE, tab.align = "center"}
+fit_2 <- lmer(mean_firing_rate ~ contrast_left + contrast_right + (1|session),data=df)
+tab_2 <- summary(fit_2)
+df2 <- data.frame(Parameter  = c("Intercept", "Contrast_left0.25","Contrast_left0.5","Contrast_left1",
+                                  "Contrast_right0.25","Contrast_right0.5", "Contrast_right1"),
+                  Estimate = c("2.77", "-0.06",
+                  "0.23","0.25","0.12","0.19","0.39"),
+                  
+                  Sd= c("0.52","0.06","0.05","0.05","0.06","0.05","0.05"),
+                  t_value=c("5.34","-1.13","4.12","4.68","2.16","3.45","7.87"),
+                   P_value =c("0.01","0.27","0.00","0.00","0.03","0.00","0.00"))
+
+
+df2 %>%
+  kbl(caption = "") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+<p style="text-align: center;">**Table 5**. Parameter estimate of reduced model.</p>
+
+
+|     Groups  |  Name   | Variance |Std.Dev|
+| ------------------|:-----------:|:----------------------:| :-----:|
+| `session`     |  (Intercept)| 1.3403  | 1.1577|
+|    `Residuals`      | |  0.4233 |0.6506|
+<p style="text-align: center;">**Table 6**. Variance for random effects of full model.</p>
+
+
+## Hypothesis testing
+
+The null hypothesis suggests that there is no significant difference between the full model and the reduced model, which means that the interaction term can be removed from the model. On the other hand, the alternative hypothesis proposes that the full model and the reduced model are markedly different, and hence, the interaction term should be retained in the model.
+
+To test these hypotheses, a **likelihood ratio test** was employed by comparing the likelihood of the data given the full model to that of the reduced model (Vuong 1989). The ratio of these two likelihoods was used to determine whether the full model provided a significantly better fit to the data than the reduced model. The `anova()` function in R was used for this purpose.
+
+The F-statistic in **Table 7**, obtained from the ANOVA, was calculated by dividing the residual sum of squares between the two models by the difference in degrees of freedom between them. The p-value in the table is the probability of observing an F-statistic as extreme or more extreme than the one observed, assuming that the null hypothesis (i.e., the reduced model is sufficient) is correct. At a significance level of 0.05, the null hypothesis is rejected, indicating that the interaction term between `contrast_left` and `contrast_right` is statistically significant in the model.
+
+```{r,echo=FALSE, warning=FALSE, results='hide',include = FALSE, message=FALSE}
+anova(fit)
+anova(fit_2)
+anova(fit, fit_2)
+```
+
+
+|     Model   |  npar   |  AIC | BIC| logLik |deviance|Chisq |Df |Pr(>Chisq)|
+| ------------------|:-----------:|:------:|:----------------------:| :-----:|:-----:|:-----:|:-----:|:-----:|
+| `Reduced model`     |  9 | 2409.9  |   2455.6  |  -1195.9 | 2391.9|  | | |
+| `Full model`      | 18 | 2410.3 |    2501.9 | -1187.2| 2374.3|17.524|9|0.04112 *
+
+<p style="text-align: center;">**Table 7**. Comparison of full model vs. reduced model.</p>
+
+
+## Post-hoc analysis
+
+After detecting a significant interaction between `contrast_left` and `contrast_right`, it is recommended to perform a post-hoc analysis using the **Bonferroni adjustment** (Brown 2008). The post-hoc analysis results, depicted in **Figure 5**, indicate that when `contrast_left` is 0, the comparison between 0 and 1 of `contrast_right`, 0 and 0.5 of `contrast_right`, and 0 and 0.25 of `contrast_right` are significant. When `contrast_left` is 0.5 and 1, only the comparison between 0 and 1 of `contrast_right` is significant. The interaction between contrast_left and contrast_right is also apparent in **Figure 3** in the Exploratory Data Analysis section.
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+library(emmeans)
+means = emmeans(fit,specs = c('contrast_left','contrast_right'))
+contrasts_by_left = contrast(means,method='pairwise',by='contrast_left')
+summary(contrasts_by_left,infer=T,level = 1-(0.05/5))  
+
+```
+
+```{r,echo=FALSE, result = 'hide', fig.height = 5, fig.width = 5, fig.align = "center"}
+plot(contrasts_by_left,ylab="Contrast of different levels of contrast_right")
+```
+<p style="text-align: center;">**Figure 5**. Bonferroni adjusted post-hoc analysis.</p>
+
+
+*** 
+
+# Sensitivity analysis 
+
+
+<div align="left"> Firstly, random effects of `session` was required for the full model to remove the influence of session on mean firing rate and improve the power of the test (**Table 8**).  
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+fit_3 <- lm(mean_firing_rate ~ contrast_left * contrast_right,data=df)
+anova(fit,fit_3)
+```
+|     Model   |  npar   |  AIC | BIC| logLik |deviance|Chisq |Df |Pr(>Chisq)|
+| ------------------|:-----------:|:------:|:----------------------:| :-----:|:-----:|:-----:|:-----:|:-----:|
+| `Reduced model (exclude (1|session)`    |  17 | 3848.2  |   3934.7  |  -1907.1| 3814.2|  | | |
+| `Full model`      | 18 | 2410.3 |    2501.9 | -1187.2| 2374.3|1439.8|9|< 2.2e-16 ***|
+<p style="text-align: center;">**Table 8**. Comparison of full model vs. reduced model.</p>
+
+
+The Residuals vs Fitted Values plot (**Figure 6**) indicates that the residuals are uniformly distributed on both sides of the x-axis. This suggests that our model does not violate the assumption of equal variance. However, based on result from Levene's test, the assumption of homogeneity of variance doesn't meet (**P<0.0001**). Additionally, the Normal Q-Q plot shows that the residuals are slightly heavy-tailed, which indicates our model doesn't meet the normality assumption.
+
+
+```{r,echo=FALSE, result = 'hide', fig.height = 3, fig.width = 3, fig.align = "center"}
+# Diagnostic plots
+# Create a layout with one row and two columns
+#par(mfcol = c(1, 2))
+
+# Plot Q-Q plot of residuals
+#qqnorm(resid(fit))
+#qqline(resid(fit))
+
+# Plot fitted values versus predictor variable
+#plot(fit)
+```
+
+```{r,  out.width = '75%', echo=FALSE,fig.align = "center"}
+knitr::include_graphics("diagnostic.png")
+```
+<p style="text-align: center;">**Figure 6**. Diagnostic plots.</p>
+
+
+## Remedy
+
+After finding that using mean firing rate did not meet the assumptions, maximum firing rate was used to analyze the data. However, those assumptions were also not met either. 
+
+Nonparametric alternative called the **generalized linear mixed effects models** and **nonparametric mixed effects models** were employed (Wu et al. 2006), but the full and reduced models showed infinite values for AIC, BIC, and logLik. To determine the significance of the interaction term in a linear mixed effects model (LMM), **permutation** can be used as a nonparametric method (Bonnini et al. 2014). In a traditional hypothesis testing framework, the significance of a parameter estimate (such as the interaction term) is assessed by comparing its value to a null distribution of that parameter under the assumption of the null hypothesis. Permutation testing involves randomly shuffling the values of the response variable while maintaining the association with predictor variables, refitting the model to the permuted data, and recording the parameter estimate of interest (i.e. the interaction term). This process is repeated multiple times (i.e. 1000) to create a null distribution of the parameter estimate under the null hypothesis.
+
+After conducting the permutation test, we obtained a p-value that is below the significance level of 0.05. This result allows us to reject the null hypothesis and conclude that the interaction term in the model is statistically significant. If the p-value from the permutation test for the full model is below the significance level, it suggests that the observed interaction effect between the contrast_left and contrast_right predictors is unlikely to have occurred by chance, given the null hypothesis. As a result, we can reject the null hypothesis and infer that there is strong evidence supporting a significant interaction effect between the two predictors on the mean firing rate. This indicates that the `contrast_left` and `contrast_right` work together to influence the `mean firing rate`.
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+#fit3 <- lmer(max_firing_rate ~ contrast_left * contrast_right + (1|session),data=df)
+#fit4 <- lmer(max_firing_rate ~ contrast_left + contrast_right + (1|session),data=df)
+#anova(fit3,fit4)
+#qqnorm(resid(fit4))
+#qqline(resid(fit))
+#shapiro.test(resid(fit4))
+# Plot fitted values versus predictor variable
+#plot(fit)
+
+#fit1_glmer <- glmer(mean_firing_rate ~ contrast_left * contrast_right + (1|session),
+                 #   data = df, family = binomial())
+#fit2_glmer <- glmer(mean_firing_rate ~ contrast_left + contrast_right + (1|session),
+                  #  data = df, family = binomial())
+# compare the models using anova()
+#anova(fit1_glmer, fit2_glmer)
+library(lmerTest)
+# Fit the full model
+fit1 <- lmer(mean_firing_rate ~ contrast_left * contrast_right + (1|session), data = df)
+# Compute the observed F-statistic
+obs_stat <- anova(fit1)$F[2]
+# Set the number of permutations
+n_perm <- 1000
+# Create an empty vector to store the permuted F-statistics
+perm_stats <- numeric(n_perm)
+# Permutation test
+for (i in 1:n_perm) {
+  # Shuffle the response variable
+  shuffled_response <- df$mean_firing_rate[sample(nrow(df), replace = FALSE)]
+  # Refit the full model with the shuffled response
+  perm_fit <- lmer(shuffled_response ~ contrast_left * contrast_right + (1|session), data = df)
+  # Compute the permuted F-statistic
+  perm_stats[i] <- anova(perm_fit)$F[2]
+}
+# Compute the p-value as the proportion of permuted F-statistics that are greater than or equal to the observed F-statistic
+p_value <- mean(perm_stats >= obs_stat)
+
+```
+
+
+
+# Predictive modeling  
+
+The aim of this section is to investigate how neural activities and stimuli can be used to predict the outcome of each trial. The target variable is `feedback type` which is converted to a range of 0 and 1, and the other variables are predictors (**Table 9**). The study used logistic regression, support vector machine and random forest. Grid search and five-fold cross-validation were used to find the most effective combinations of hyperparameters. The first 100 trials in Session 1 were used as test data, while the remaining trials were used as training data. 
+
+```{r, echo=FALSE, warning=FALSE,  message=FALSE, tab.align = "center"}
+tab <- data.frame( Type =c("Categorical", "Categorical", "Numeric","Numeric","Categorical","Categorical","Categorical","Categorical","Categorical"),Description = c("contrast of the left stimulus","contrast of the right stimulus","average number of spikes per second across all neurons within 0.4 seconds time interval","maximum number of spikes per second across all neurons within 0.4 seconds time interval","Experiment session","Name of the mouse for experiment","Date of the experiment","type of the feedback, 1 for success and 0 for failure","Absolute difference between left and right contrast"),Missing_Percentage = colMeans(is.na(df)))
+library(kableExtra)
+tab %>%
+  kbl(caption = "") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+<p style="text-align: center;">**Table 9**. Dataset information for prediction.</p>
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+levels(df$feedback_type)[levels(df$feedback_type)=="-1"] <- "0"
+train <- df[101:nrow(df), ]
+Y_train <- train$feedback_type
+X_train <- train[, -which(names(train) == "feedback_type")]
+test <- df[1:100, ]
+Y_test <- test$feedback_type
+X_test <- test[, -which(names(train) == "feedback_type")]
+my_table_0 <- table(df$feedback_type)
+print.table(my_table_0)
+```
+
+The models were compared using AUC (Area under the curve), sensitivity, specificity, and Kappa. AUC is a measure of the model’s ability to distinguish between positive and negative classes. It indicates whether a true positive is ranked higher than a false positive on average. An AUC of 1.0 represents a model that made all predictions perfectly, while an AUC of 0.5 represents a model that is no better than random. ROC can be broken down into sensitivity and specificity. Sensitivity is the proportion of true positives that are correctly identified, while specificity is the proportion of true negatives that are correctly identified. It is important to note that the target variable `feedback_type` is unbalanced (**Table 10**). If a classifier predicts all `feedback_type` is 1, it can yield 65.64% accuracy. A metric that can deal with an unbalanced target variable should be used. Kappa is a measure of agreement between two raters (Fatourechi et al. 2008). It is a measure of the degree of agreement between the observed and expected agreement.
+$$K = \dfrac{p_0-p_e}{1-p_e}$$
+$p_0$ is the overall accuracy of the model and $p_e$ is the measure of agreement between the model predictions and the actual class values. 
+
+|     `feedback_type`  |  1   |   0|
+| ------------------|:-----------:|:------:|
+| Count |  785 | 411|
+<p style="text-align: center;">**Table 10**. Contigency table for target variable `feedback_type.`</p>
+
+## Logitic regression
+
+Logistic regression is a supervised learning algorithm used for binary classification. Given the values of the independent variables, this classifier forecasts the likelihood that the dependent variable will take on a specific value (LaValley 2008). The ideal hyperparameters are `lamda` = 0.0006488333 and `alpha` = 1.
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+library(pROC)
+library(glmnet)
+library(caret)
+# define the logistic regression model
+model <- glm(feedback_type ~ ., data = train, family = binomial)
+
+# define the grid of hyperparameters to search over
+hyperparameters <- list(
+  alpha = seq(0, 1, 0.1),
+  lambda = seq(0, 1, 0.1)
+)
+
+# perform cross-validation to find the best hyperparameters
+cv_results <- cv.glmnet(
+  x = model.matrix(feedback_type ~ ., data = train),
+  y = Y_train,
+  alpha = 1,
+  family = "binomial",
+  type.measure = "auc",
+  nfolds = 5
+)
+
+# get the best hyperparameters
+best_alpha <- 1
+best_lambda <- cv_results$lambda.min
+
+# train the logistic regression model with the best hyperparameters on the entire train dataset
+best_model <- glmnet(
+  x = model.matrix(feedback_type ~ ., data = train),
+  y = train$feedback_type,
+  alpha = best_alpha,
+  lambda = best_lambda,
+  family = "binomial"
+)
+
+# make predictions on the test dataset
+test_probs <- predict(best_model, newx = model.matrix(feedback_type ~ ., data = test), type = "response")
+test_preds <- ifelse(test_probs > 0.5, 1, 0)
+
+# calculate the confusion matrix
+conf_mat <- table(test$feedback_type, test_preds)
+test_preds_factor <- factor(test_preds, levels = c(0, 1), labels = c("0", "1"))
+names(test_preds_factor) <- as.character(1:length(test_preds_factor))
+confusionMatrix(test_preds_factor,test$feedback_type)
+# calculate the AUC
+test_roc <- roc(test$feedback_type, test_probs)
+test_auc <- auc(test_roc)
+
+# plot the ROC curve
+plot(test_roc, main = "ROC Curve for Test Data")
+
+```
+
+
+
+## Support vector machine
+
+Support vector machine is a supervised learning algorithm which can find a hyperplane in N-dimentional space to separate data points. The hyperplane is chosen such that the margin between the hyperplane and the closest data points from each class is maximized. SVMs use a kernel function to transform the data into a higher-dimensional space where a linear hyperplane can be used to separate the data (Jakkula 2006). The optimal hyperparameters are `kernal`: rbf,`cost`=1. Radial basis function is a non-linear kernel function and is the most popular kernal used when we don't have prior  knowledge about the dataset.
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+set.seed(100)
+library(e1071)
+library(pROC)
+
+# Train the SVM classifier on the train data using cross-validation
+svm.fit <- svm(feedback_type ~ ., data = train, kernel = "radial", gamma = 0.1, cost = 10, probability = TRUE)
+svm.cv <- tune(svm, feedback_type ~ ., data = train, kernel = "radial", ranges = list(gamma = 2^(-5:5), cost = 2^(-5:5)))
+
+# Get the best SVM model from cross-validation
+best.svm <- svm.cv$best.model
+
+# Use the best SVM model to predict the labels of the test data
+svm.pred <- predict(best.svm, newdata = test)
+
+# Calculate the confusion matrix
+confusionMatrix(svm.pred, test$feedback_type)
+
+# Retrain the SVM model with probability = TRUE
+best.svm.prob <- svm(feedback_type ~ ., data = train, kernel = "radial", gamma = best.svm$gam, cost = best.svm$cost, probability = TRUE)
+
+# Use the retrained SVM model to predict the probabilities of the test data
+svm.probs <- predict(best.svm.prob, newdata = test, probability = TRUE)
+
+# Calculate the AUC of the ROC curve
+svm.auc <- roc(test$feedback_type, attributes(svm.probs)$probabilities[,2])
+auc(svm.auc)
+
+# Plot the ROC curve
+plot(svm.auc)
+
+
+```
+
+
+## Random forest
+
+One ensemble learning algorithm that can be used for classification is the random forest classifier. Random forests aggregate the findings of all the decision trees they have built to make final decision. Each tree was build using random subset of the training data and a random subset of the features, which can help to reduce overfitting and enhances the model's generalization capabilities (Devetyarov 2010). The most optimal hyperparameters are `ntree`=500, `No. variables at each split`= 4. 
+
+```{r message=FALSE, warning=FALSE, include=FALSE, results='hide'}
+set.seed(100)
+library(randomForest)
+rf.fit <- randomForest(feedback_type ~ ., data = train, ntree = 500, mtry = 3, importance = TRUE)
+rf.cv <- tuneRF(train[,-1], train[,1], ntreeTry=500, stepFactor=1.5, improve=0.01, trace=TRUE, plot=FALSE)
+# Get row with lowest OOB error rate
+best.row <- which.min(rf.cv[, "OOBError"])
+
+# Get best mtry
+best.mtry <- rf.cv[best.row, "mtry"]
+
+# Train final random forest model with best mtry
+best.rf <- randomForest(feedback_type ~ ., data = train, mtry = best.mtry)
+
+# Predict on test data
+test.pred <- predict(best.rf, newdata = test)
+
+# Calculate confusion matrix
+confusionMatrix(test$feedback_type, test.pred)
+
+# Calculate AUC
+
+test.probs <- predict(best.rf, newdata = test, type = "prob")
+
+
+# Calculate the AUC of the ROC curve
+rf.auc <- roc(test$feedback_type, test.probs[,2])
+auc(rf.auc)
+
+# Plot the ROC curve
+plot(rf.auc)
+```
+
+## Comparison of model performance
+
+Based on ROC curve (**Figure 7**) and metrics (**Table 11**), Logistic regression has the highest AUC but lowest Kappa and sensitivity, which indicates this classifier is biased and make more false negative, incorrectly identifying `feedback_type` failure as success. Similar issue was found in SVM classifier as well. After comparison, random forest has the best performance because the classfication is more unbiased and accurate.
+
+
+```{r,echo=FALSE, result = 'hide', fig.height = 4, fig.width = 4, fig.align = "center"}
+library(pROC)
+library(ggplot2)
+
+# Generate TPR and FPR for three classifiers
+
+# Combine TPR and FPR for each classifier into a data frame
+
+df <- cbind.data.frame(
+  fpr = c(test_roc$specificities, svm.auc$specificities, rf.auc$specificities),
+  tpr = c(test_roc$sensitivities, svm.auc$sensitivities, rf.auc$sensitivities),
+  classifier = c(rep("Logistic regression",length(test_roc$sensitivities)),rep("Support vector machine",length(svm.auc$sensitivities)),rep("Random forest",length(rf.auc$sensitivities))))
+
+
+# Plot ROC curves
+ggplot(df, aes(x = fpr, y = tpr, color = classifier)) +
+  geom_line() +
+  labs(
+       x = "False Positive Rate",
+       y = "True Positive Rate",
+       color = "Classifier")+theme(legend.position="top")
+
+```
+<p style="text-align: center;">**Figure 7**. ROC comparison for three models.</p>
+
+
+
+|     Model  |  Hyperparameter| AUC |Kappa|Sensitivity|Specificity|
+| -----------|:-----------:|:----:| :-----:|:-----:|:-----:|
+| `Logistic regression`     |  `lambda`=0.0005, `alpha` =1| 0.7037  | 0.19|0.15|0.99|
+|    `Support vector machine`      |`kernal`: rbf,`cost`=1 | 0.6616 |0.24|0.23|0.96|
+|    `Random forest`      |`ntree`=500, `No. variables at each split`=4 | 0.6824 |0.39|0.65|0.82|
+
+<p style="text-align: center;">**Table 11**. Comparison of model performance.</p>
+
+*** 
+
+# Discussion 
+
+In this project, we first investigated the effect of the interaction between `contrast_left` and `contrast_right` on the response of neurons in the visual cortex (`mean_firing_rate`). We employed a **linear mixed model** and compared the likelihood of the data given the full model to that of the reduced model (excluding the interaction term) using a **likelihood ratio test**. The test showed that the two models were significantly different and that the interaction term should be retained. However, this experiment failed in the sensitivity analysis stage due to non-normality. A non-parametric method, **permutation**, was used and yielded the same result. Thus, there is strong evidence supporting a significant interaction effect between the two predictors on the mean firing rate. This indicates that `contrast_left` and `contrast_right` work together to influence the `mean firing rate`. In this study, we only controlled the effect of session. To improve the power of this experiment, the mouse and experiment date should be controlled as well. Different mice may have different response patterns and different sensitivity with regard to stimuli. If a mouse has experienced several trials on consecutive dates, it may change the neuron response pattern as well due to tiredness or become a conditional reflex.
+
+In this study, success and failure of response were also predicted. The study used logistic regression, support vector machines, and random forest models. Grid search and five-fold cross-validation were used to find the most effective combinations of hyperparameters. The models were compared using AUC (Area under the curve), sensitivity, specificity, and Kappa. After comparison, random forest had the most unbiased and accurate prediction of `feedback_type`. To improve the accuracy, more features can be added to the model. Additionally, collecting more observations to deal with an unbalanced target variable, resampling the dataset, or generating synthetic samples are possible ways to improve the model. Penalized classification can also be tried, which can impose an additional penalty on the model for misclassifying the minority class (Wang et al. 2021).
+
+
+# Acknowledgement 
+
+I want to thank instructor Shizhe Chen and teaching assistant Jing Lyu for their guidance and help. Also I discussed some questions with Lulu, Honeyuan, Yaocao and Jiafeng.
+
+# Reference 
+Bonnini, S., Corain, L., Marozzi, M. and Salmaso, L., (2014). Nonparametric hypothesis testing: rank and permutation methods with applications in R. John Wiley & Sons.
+
+Brown JD. (2008) The Bonferroni adjustment. Statistics.Jan;12(1).
+
+Cisek, P. & Kalaska, J. F. (2010) Neural mechanisms for interacting with a world full of action choices. Annu. Rev. Neurosci. 33, 269–298 .
+
+Devetyarov, D. and Nouretdinov, I., (2010), October. Prediction with Confidence Based on a Random Forest Classifier. In AIAI (pp. 37-44).
+
+Fatourechi, M., Ward, R.K., Mason, S.G., Huggins, J., Schlögl, A. and Birch, G.E., (2008), December. Comparison of evaluation metrics in classification applications with imbalanced datasets. In 2008 seventh international conference on machine learning and applications (pp. 777-782). IEEE.
+
+Hernández, A. et al. (2010) Decoding a perceptual decision process across cortex. Neuron 66, 300–314 .
+
+Jakkula, V., (2006). Tutorial on support vector machine (svm). School of EECS, Washington State University, 37(2.5), p.3.
+
+LaValley, M.P., (2008). Logistic regression. Circulation, 117(18), pp.2395-2399.
+
+Steinmetz, N.A., Zatka-Haas, P., Carandini, M. et al.(2019). Distributed coding of choice, action and engagement across the mouse brain. Nature 576, 266–273.
+
+Vuong, Q.H., (1989). Likelihood ratio tests for model selection and non-nested hypotheses. Econometrica: journal of the Econometric Society, 307-333.
+
+Wang, L., Han, M., Li, X., Zhang, N., & Cheng, H. (2021). Review of classification methods on unbalanced data sets. IEEE Access, 9, 64606-64628.
+
+Wu, H. and Zhang, J.T., (2006). Nonparametric regression methods for longitudinal data analysis: mixed-effects modeling approaches. John Wiley & Sons.
+
+*** 
+# Session info 
+
+
+```{r}
+sessionInfo()
+```
+*** 
+
+# Appendix 
+\begin{center} Appendix: R Script \end{center}
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
+
+
+
